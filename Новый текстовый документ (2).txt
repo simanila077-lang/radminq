@@ -1,0 +1,480 @@
+if getgenv and getgenv().REL1LSY_LOADED then return end
+if getgenv then getgenv().REL1LSY_LOADED = true end
+local Players,RunService,UserInputService,TweenService,ReplicatedStorage,Workspace,HttpService=game:GetService("Players"),game:GetService("RunService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("ReplicatedStorage"),game:GetService("Workspace"),game:GetService("HttpService")
+local LocalPlayer,Camera=Players.LocalPlayer,Workspace.CurrentCamera or Workspace:WaitForChild("Camera")
+local LicenseType="Developer"
+local Settings={AimEnabled=false,AimFOV=200,AimSmooth=0,AimTeamCheck=false,AimVisibleCheck=false,AimTargetPart="Head",AimShowFOV=true,AimKeybind=Enum.KeyCode.E,SilentAim=false,SilentAimFOV=150,SilentAimKeybind=Enum.UserInputType.MouseButton1,BulletManipulation=false,ESPEnabled=false,ESPTeamCheck=false,ESPBox=true,ESPHealthBar=true,ESPName=true,ESPDistance=true,ESPThickness=2,ESPColor=Color3.fromRGB(138,43,226),ESPSkeleton=true,ESPChamsColor=Color3.fromRGB(255,0,0),ESPTracers=false,ESPTracersColor=Color3.fromRGB(255,255,255),AntiSpread=false,NoRecoil=false,NoClip=false,Fly=false,FlySpeed=50,BHop=false,RapidFire=false,RapidFireDelay=0.08,AntiAFK=true,MenuKey=Enum.KeyCode.RightShift,MenuOpen=true,GUIColor=Color3.fromRGB(138,43,226),HUDVisible=true,ShowStatusTable=false}
+local CurrentLang="ru"
+local espObjects={}
+local DrawingSupported=false
+pcall(function() local d=Drawing.new("Line");d:Remove();DrawingSupported=true end)
+local Texts={ru={title="REL1LSY HUB",version="v3.1",aim="Аим",visuals="Визуалы",misc="Разное",settings="Настройки",rage="Рейдж",aim_settings="Настройки Аима",aim_fov="FOV Радиус",aim_smooth="Плавность",aim_team="Проверка команды",aim_visible="Проверка видимости",aim_target="Цель",aim_showfov="Показывать FOV",aim_keybind="Кнопка Аима",silent_settings="Настройки Silent Aim",silent_fov="FOV Silent Aim",silent_key="Кнопка Silent Aim",bullet_manipulation="Bullet Manipulation",vis_enable="Включить ESP",vis_team="Проверка команды",vis_box="Рамка",vis_health="Полоса HP",vis_name="Имя игрока",vis_distance="Дистанция",vis_thickness="Толщина линий",vis_color="Цвет ESP",skeleton_settings="Настройки Скелета",skeleton_color="Цвет скелета",tracer_settings="Настройки Трейсеров",tracer_color="Цвет трейсеров",rage_antispread="Анти Разброс",rage_norecoil="Анти Отдача",rage_noclip="NoClip",rage_fly="Fly",rage_fly_settings="Настройки Fly",rage_speed="Скорость полёта",rage_bhop="BHop",rage_rapidfire="Быстрая стрельба",rage_rapidfire_settings="Настройки Rapid Fire",rage_rapidfire_delay="Задержка (мс)",misc_hud_toggle="Скрыть HUD",misc_status="Таблица статуса",set_keybind="Кнопка меню",set_antiafk="Анти-АФК",set_unload="Выгрузить скрипт",set_guicolor="Цвет GUI",config_save="Сохранить",config_load="Загрузить"},en={title="REL1LSY HUB",version="v3.1",aim="Aim",visuals="Visuals",misc="Misc",settings="Settings",rage="Rage",aim_settings="Aim Settings",aim_fov="FOV Radius",aim_smooth="Smoothness",aim_team="Team Check",aim_visible="Visibility Check",aim_target="Target",aim_showfov="Show FOV",aim_keybind="Aim Keybind",silent_settings="Silent Aim Settings",silent_fov="Silent Aim FOV",silent_key="Silent Aim Key",bullet_manipulation="Bullet Manipulation",vis_enable="Enable ESP",vis_team="Team Check",vis_box="Box",vis_health="Healthbar",vis_name="Player Name",vis_distance="Distance",vis_thickness="Line Thickness",vis_color="ESP Color",skeleton_settings="Skeleton Settings",skeleton_color="Skeleton Color",tracer_settings="Tracers Settings",tracer_color="Tracers Color",rage_antispread="Anti Spread",rage_norecoil="No Recoil",rage_noclip="NoClip",rage_fly="Fly",rage_fly_settings="Fly Settings",rage_speed="Fly Speed",rage_bhop="BHop",rage_rapidfire="Rapid Fire",rage_rapidfire_settings="Rapid Fire Settings",rage_rapidfire_delay="Delay (ms)",misc_hud_toggle="Hide HUD",misc_status="Status Table",set_keybind="Menu Key",set_antiafk="Anti-AFK",set_unload="Unload Script",set_guicolor="GUI Color",config_save="Save",config_load="Load"}}
+local function t(k) return Texts[CurrentLang][k] or k end
+-- Configs
+local ConfigFolder="REL1LSY_Configs"
+local function SaveConfig(n) pcall(function() if not isfolder(ConfigFolder) then makefolder(ConfigFolder) end local d={} for k,v in pairs(Settings) do if type(v)~="function" and type(v)~="table" then d[k]=v end end writefile(ConfigFolder.."/"..n..".json",HttpService:JSONEncode(d)) end) end
+local function LoadConfig(n) pcall(function() if isfile(ConfigFolder.."/"..n..".json") then local d=HttpService:JSONDecode(readfile(ConfigFolder.."/"..n..".json")) for k,v in pairs(d) do if Settings[k]~=nil then Settings[k]=v end end end end) end
+-- HUD
+local HUDGui=Instance.new("ScreenGui");HUDGui.Name="REL1LSY_HUD";HUDGui.ResetOnSpawn=false;HUDGui.IgnoreGuiInset=true;HUDGui.DisplayOrder=99998;HUDGui.Parent=LocalPlayer:WaitForChild("PlayerGui")
+local HUDFrame=Instance.new("Frame");HUDFrame.Size=UDim2.new(0,320,0,22);HUDFrame.Position=UDim2.new(0.5,-160,0,10);HUDFrame.BackgroundColor3=Color3.fromRGB(15,15,25);HUDFrame.BorderSizePixel=0;HUDFrame.Parent=HUDGui
+local HUDCorner=Instance.new("UICorner");HUDCorner.CornerRadius=UDim.new(0,4);HUDCorner.Parent=HUDFrame
+local HUDStroke=Instance.new("UIStroke");HUDStroke.Color=Settings.GUIColor;HUDStroke.Thickness=1;HUDStroke.Parent=HUDFrame
+local HUDLayout=Instance.new("UIListLayout");HUDLayout.FillDirection=Enum.FillDirection.Horizontal;HUDLayout.HorizontalAlignment=Enum.HorizontalAlignment.Center;HUDLayout.VerticalAlignment=Enum.VerticalAlignment.Center;HUDLayout.Padding=UDim.new(0,10);HUDLayout.Parent=HUDFrame
+local HUDPadding=Instance.new("UIPadding");HUDPadding.PaddingLeft=UDim.new(0,10);HUDPadding.PaddingRight=UDim.new(0,10);HUDPadding.Parent=HUDFrame
+local HUDTitle=Instance.new("TextLabel");HUDTitle.Size=UDim2.new(0,0,1,0);HUDTitle.AutomaticSize=Enum.AutomaticSize.X;HUDTitle.BackgroundTransparency=1;HUDTitle.Text="REL1LSY";HUDTitle.TextColor3=Color3.fromRGB(255,255,255);HUDTitle.TextSize=11;HUDTitle.Font=Enum.Font.GothamBold;HUDTitle.Parent=HUDFrame
+local HUDVersion=Instance.new("TextLabel");HUDVersion.Size=UDim2.new(0,0,1,0);HUDVersion.AutomaticSize=Enum.AutomaticSize.X;HUDVersion.BackgroundTransparency=1;HUDVersion.Text="v3.1";HUDVersion.TextColor3=Color3.fromRGB(138,43,226);HUDVersion.TextSize=11;HUDVersion.Font=Enum.Font.GothamBold;HUDVersion.Parent=HUDFrame
+local HUDUser=Instance.new("TextLabel");HUDUser.Size=UDim2.new(0,0,1,0);HUDUser.AutomaticSize=Enum.AutomaticSize.X;HUDUser.BackgroundTransparency=1;HUDUser.Text=LocalPlayer.Name;HUDUser.TextColor3=Color3.fromRGB(200,200,200);HUDUser.TextSize=11;HUDUser.Font=Enum.Font.Gotham;HUDUser.Parent=HUDFrame
+local HUDLicense=Instance.new("TextLabel");HUDLicense.Size=UDim2.new(0,0,1,0);HUDLicense.AutomaticSize=Enum.AutomaticSize.X;HUDLicense.BackgroundTransparency=1;HUDLicense.Text="["..LicenseType.."]";HUDLicense.TextColor3=Color3.fromRGB(255,215,0);HUDLicense.TextSize=11;HUDLicense.Font=Enum.Font.GothamBold;HUDLicense.Parent=HUDFrame
+if LicenseType=="Developer" then task.spawn(function() while HUDLicense and HUDLicense.Parent do local c={Color3.fromRGB(255,215,0),Color3.fromRGB(255,235,100),Color3.fromRGB(255,200,50),Color3.fromRGB(255,245,150),Color3.fromRGB(255,215,0)} for i=1,#c-1 do if HUDLicense and HUDLicense.Parent then TweenService:Create(HUDLicense,TweenInfo.new(1.5,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{TextColor3=c[i]}):Play();task.wait(1.5) else break end end end end) end
+-- Status Table
+local StatusGui=Instance.new("ScreenGui");StatusGui.Name="StatusTable";StatusGui.ResetOnSpawn=false;StatusGui.IgnoreGuiInset=true;StatusGui.DisplayOrder=99997;StatusGui.Parent=LocalPlayer:WaitForChild("PlayerGui")
+local StatusFrame=Instance.new("Frame");StatusFrame.Size=UDim2.new(0,200,0,300);StatusFrame.Position=UDim2.new(0.02,0,0.5,-150);StatusFrame.BackgroundColor3=Color3.fromRGB(15,15,25);StatusFrame.BorderSizePixel=0;StatusFrame.Visible=false;StatusFrame.Parent=StatusGui
+local StatusCorner=Instance.new("UICorner");StatusCorner.CornerRadius=UDim.new(0,8);StatusCorner.Parent=StatusFrame
+local StatusStroke=Instance.new("UIStroke");StatusStroke.Color=Settings.GUIColor;StatusStroke.Thickness=1.5;StatusStroke.Parent=StatusFrame
+local StatusTitle=Instance.new("TextLabel");StatusTitle.Size=UDim2.new(1,0,0,25);StatusTitle.BackgroundTransparency=1;StatusTitle.Text="Active Features";StatusTitle.TextColor3=Color3.fromRGB(255,255,255);StatusTitle.TextSize=12;StatusTitle.Font=Enum.Font.GothamBold;StatusTitle.Parent=StatusFrame
+local StatusList=Instance.new("Frame");StatusList.Size=UDim2.new(1,-10,1,-30);StatusList.Position=UDim2.new(0,5,0,28);StatusList.BackgroundTransparency=1;StatusList.Parent=StatusGui
+local StatusLayout=Instance.new("UIListLayout");StatusLayout.Padding=UDim.new(0,3);StatusLayout.Parent=StatusList
+local sDrag,sStart,sPos=false,nil,nil
+StatusTitle.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then sDrag=true;sStart=i.Position;sPos=StatusFrame.Position end end)
+StatusTitle.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then sDrag=false end end)
+UserInputService.InputChanged:Connect(function(i) if sDrag and i.UserInputType==Enum.UserInputType.MouseMovement then local d=i.Position-sStart;StatusFrame.Position=UDim2.new(sPos.X.Scale,sPos.X.Offset+d.X,sPos.Y.Scale,sPos.Y.Offset+d.Y) end end)
+-- ESP
+local function createESP(plr)
+    if plr==LocalPlayer or not DrawingSupported then return end
+    local data={Box={Drawing.new("Line"),Drawing.new("Line"),Drawing.new("Line"),Drawing.new("Line")},Skeleton={},HP_BG=Drawing.new("Line"),HP_Fill=Drawing.new("Line"),NameTag=Drawing.new("Text"),DistTag=Drawing.new("Text"),Tracer=Drawing.new("Line")}
+    for _,l in ipairs(data.Box) do l.Thickness=Settings.ESPThickness;l.Color=Settings.ESPColor;l.Visible=false end
+    data.HP_BG.Thickness=3;data.HP_BG.Color=Color3.fromRGB(0,0,0);data.HP_BG.Visible=false
+    data.HP_Fill.Thickness=2;data.HP_Fill.Color=Color3.fromRGB(0,255,0);data.HP_Fill.Visible=false
+    for _,p in ipairs({"Head_UpperTorso","UpperTorso_LowerTorso","UpperTorso_LeftUpperArm","LeftUpperArm_LeftLowerArm","UpperTorso_RightUpperArm","RightUpperArm_RightLowerArm","LowerTorso_LeftUpperLeg","LeftUpperLeg_LeftLowerLeg","LowerTorso_RightUpperLeg","RightUpperLeg_RightLowerLeg"}) do local l=Drawing.new("Line");l.Thickness=Settings.ESPThickness;l.Color=Settings.ESPChamsColor;l.Visible=false;data.Skeleton[p]=l end
+    data.NameTag.Size=13;data.NameTag.Center=true;data.NameTag.Outline=true;data.NameTag.Color=Color3.fromRGB(255,255,255);data.NameTag.Visible=false
+    data.DistTag.Size=11;data.DistTag.Center=true;data.DistTag.Outline=true;data.DistTag.Color=Color3.fromRGB(200,200,200);data.DistTag.Visible=false
+    data.Tracer.Thickness=2;data.Tracer.Color=Settings.ESPTracersColor;data.Tracer.Visible=false
+    espObjects[plr]=data
+end
+local function updateESP(plr)
+    local data=espObjects[plr]
+    if not data or not plr.Character then return end
+    local char,root,hum=plr.Character,plr.Character:FindFirstChild("HumanoidRootPart"),plr.Character:FindFirstChild("Humanoid")
+    for _,l in ipairs(data.Box) do l.Visible=false end
+    data.HP_BG.Visible=false;data.HP_Fill.Visible=false
+    for _,l in pairs(data.Skeleton) do l.Visible=false end
+    data.NameTag.Visible=false;data.DistTag.Visible=false;data.Tracer.Visible=false
+    if not root or not hum or hum.Health<=0 then return end
+    local isEnemy=true
+    if Settings.ESPTeamCheck and plr.Team==LocalPlayer.Team and LocalPlayer.Team~=nil then isEnemy=false end
+    if not Settings.ESPEnabled or not isEnemy then return end
+    local pos,onScreen=Camera:WorldToViewportPoint(root.Position)
+    if not onScreen then return end
+    local headPos=char:FindFirstChild("Head")
+    local headScreen,headOn=Camera:WorldToViewportPoint(headPos and headPos.Position or root.Position+Vector3.new(0,3,0))
+    local feetScreen,feetOn=Camera:WorldToViewportPoint(root.Position-Vector3.new(0,3,0))
+    if not headOn or not feetOn then return end
+    local height=math.abs(feetScreen.Y-headScreen.Y)
+    local left,right=pos.X-(height*0.6)/2,pos.X+(height*0.6)/2
+    if Settings.ESPBox then
+        data.Box[1].From=Vector2.new(left,headScreen.Y);data.Box[1].To=Vector2.new(right,headScreen.Y)
+        data.Box[2].From=Vector2.new(left,feetScreen.Y);data.Box[2].To=Vector2.new(right,feetScreen.Y)
+        data.Box[3].From=Vector2.new(left,headScreen.Y);data.Box[3].To=Vector2.new(left,feetScreen.Y)
+        data.Box[4].From=Vector2.new(right,headScreen.Y);data.Box[4].To=Vector2.new(right,feetScreen.Y)
+        for _,l in ipairs(data.Box) do l.Visible=true;l.Thickness=Settings.ESPThickness;l.Color=Settings.ESPColor end
+    end
+    if Settings.ESPSkeleton then
+        local j={Head=char:FindFirstChild("Head"),UpperTorso=char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso"),LowerTorso=char:FindFirstChild("LowerTorso") or char:FindFirstChild("Torso"),LeftUpperArm=char:FindFirstChild("LeftUpperArm"),LeftLowerArm=char:FindFirstChild("LeftLowerArm"),RightUpperArm=char:FindFirstChild("RightUpperArm"),RightLowerArm=char:FindFirstChild("RightLowerArm"),LeftUpperLeg=char:FindFirstChild("LeftUpperLeg"),LeftLowerLeg=char:FindFirstChild("LeftLowerLeg"),RightUpperLeg=char:FindFirstChild("RightUpperLeg"),RightLowerLeg=char:FindFirstChild("RightLowerLeg")}
+        for pn,l in pairs(data.Skeleton) do
+            local a,b=pn:match("([^_]+)_(.+)")
+            local p1,p2=j[a],j[b]
+            if p1 and p2 then
+                local o1,on1=Camera:WorldToViewportPoint(p1.Position)
+                local o2,on2=Camera:WorldToViewportPoint(p2.Position)
+                if on1 and on2 then l.From=Vector2.new(o1.X,o1.Y);l.To=Vector2.new(o2.X,o2.Y);l.Visible=true;l.Thickness=Settings.ESPThickness;l.Color=Settings.ESPChamsColor end
+            end
+        end
+    end
+    if Settings.ESPHealthBar then
+        local hp=math.clamp(hum.Health/hum.MaxHealth,0,1)
+        local hh,hx=height*hp,left-6
+        data.HP_BG.From=Vector2.new(hx,headScreen.Y);data.HP_BG.To=Vector2.new(hx,feetScreen.Y);data.HP_BG.Visible=true
+        data.HP_Fill.From=Vector2.new(hx,feetScreen.Y);data.HP_Fill.To=Vector2.new(hx,feetScreen.Y-hh)
+        data.HP_Fill.Color=Color3.fromRGB(255*(1-hp),255*hp,0);data.HP_Fill.Visible=true
+    end
+    if Settings.ESPName then data.NameTag.Text=plr.Name;data.NameTag.Position=Vector2.new(pos.X,headScreen.Y-15);data.NameTag.Visible=true end
+    if Settings.ESPDistance then data.DistTag.Text=math.floor((root.Position-Camera.CFrame.Position).Magnitude).."m";data.DistTag.Position=Vector2.new(pos.X,feetScreen.Y+5);data.DistTag.Visible=true end
+    if Settings.ESPTracers then data.Tracer.From=Vector2.new(Camera.ViewportSize.X/2,Camera.ViewportSize.Y);data.Tracer.To=Vector2.new(pos.X,pos.Y);data.Tracer.Visible=true;data.Tracer.Color=Settings.ESPTracersColor end
+end
+for _,p in pairs(Players:GetPlayers()) do createESP(p) end
+Players.PlayerAdded:Connect(createESP)
+Players.PlayerRemoving:Connect(function(p) if espObjects[p] then local d=espObjects[p] for _,l in ipairs(d.Box) do l:Remove() end d.HP_BG:Remove();d.HP_Fill:Remove() for _,l in pairs(d.Skeleton) do l:Remove() end d.NameTag:Remove();d.DistTag:Remove();d.Tracer:Remove() espObjects[p]=nil end end)
+local fovCircle=DrawingSupported and Drawing.new("Circle") or nil
+if fovCircle then fovCircle.Thickness=1;fovCircle.NumSides=50;fovCircle.Filled=false;fovCircle.Color=Settings.GUIColor;fovCircle.Transparency=0.7;fovCircle.Visible=false end
+local silentCircle=DrawingSupported and Drawing.new("Circle") or nil
+if silentCircle then silentCircle.Thickness=1;silentCircle.NumSides=50;silentCircle.Filled=false;silentCircle.Color=Color3.fromRGB(255,50,50);silentCircle.Transparency=0.7;silentCircle.Visible=false end
+local function isPlayerVisible(tc)
+    local o,tp=Camera.CFrame.Position,tc:FindFirstChild(Settings.AimTargetPart) or tc:FindFirstChild("Head")
+    if not tp then return false end
+    local pr=RaycastParams.new();pr.FilterType=Enum.RaycastFilterType.Exclude
+    if LocalPlayer.Character then pr.FilterDescendantsInstances={LocalPlayer.Character} end
+    local r=Workspace:Raycast(o,(tp.Position-o)*1000,pr)
+    return r and r.Instance:IsDescendantOf(tc) or false
+end
+local function getBestTarget(fov,checkVis)
+    local bt,sd,sc=nil,fov or Settings.AimFOV,Vector2.new(Camera.ViewportSize.X/2,Camera.ViewportSize.Y/2)
+    for _,p in pairs(Players:GetPlayers()) do
+        if p~=LocalPlayer and p.Character then
+            if Settings.AimTeamCheck and p.Team==LocalPlayer.Team and LocalPlayer.Team~=nil then continue end
+            local h,tp=p.Character:FindFirstChild("Humanoid"),p.Character:FindFirstChild(Settings.AimTargetPart) or p.Character:FindFirstChild("Head")
+            if h and h.Health>0 and tp then
+                local sp,os=Camera:WorldToViewportPoint(tp.Position)
+                if os then
+                    local d=(Vector2.new(sp.X,sp.Y)-sc).Magnitude
+                    if d<sd then
+                        if not checkVis or isPlayerVisible(p.Character) then sd=d;bt=p end
+                    end
+                end
+            end
+        end
+    end
+    return bt
+end
+-- Fly vars
+local flyBV,flyBG=nil,nil
+-- NoClip (без проваливания)
+local function applyNoClip()
+    pcall(function()
+        local ch=LocalPlayer.Character
+        if not ch then return end
+        local root=ch:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.CanCollide=false
+            for _,p in pairs(ch:GetChildren()) do if p:IsA("BasePart") and p~=root then p.CanCollide=false end end
+            if root.Position.Y<-100 then root.CFrame=CFrame.new(root.Position.X,10,root.Position.Z) end
+        end
+    end)
+end
+-- Fly
+local function applyFly()
+    pcall(function()
+        local ch=LocalPlayer.Character
+        if not ch then return end
+        if Settings.Fly then
+            local root=ch:FindFirstChild("HumanoidRootPart")
+            if root then
+                if not flyBV then flyBV=Instance.new("BodyVelocity");flyBV.MaxForce=Vector3.new(9e9,9e9,9e9);flyBV.Velocity=Vector3.new(0,0,0);flyBV.Parent=root end
+                if not flyBG then flyBG=Instance.new("BodyGyro");flyBG.MaxTorque=Vector3.new(9e9,9e9,9e9);flyBG.P=9e4;flyBG.Parent=root end
+                local md=Vector3.new(0,0,0)
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then md=md+Camera.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then md=md-Camera.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then md=md-Camera.CFrame.RightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then md=md+Camera.CFrame.RightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then md=md+Vector3.new(0,1,0) end
+                if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then md=md-Vector3.new(0,1,0) end
+                flyBV.Velocity=md.Magnitude>0 and md.Unit*Settings.FlySpeed or Vector3.new(0,0,0)
+                flyBG.CFrame=Camera.CFrame
+            end
+        else
+            if flyBV then flyBV:Destroy();flyBV=nil end
+            if flyBG then flyBG:Destroy();flyBG=nil end
+        end
+    end)
+end
+-- Reapply после смерти
+LocalPlayer.CharacterAdded:Connect(function(ch)
+    task.spawn(function()
+        task.wait(0.3)
+        for i=1,15 do
+            if Settings.NoClip then applyNoClip() end
+            task.wait(0.1)
+        end
+    end)
+end)
+-- Rapid Fire через эмуляцию кликов
+local lastShot=0
+local function applyRapidFire()
+    if Settings.RapidFire and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+        local now=tick()
+        if now-lastShot>=Settings.RapidFireDelay then
+            lastShot=now
+            pcall(function() mouse1click() end)
+        end
+    end
+end
+-- BHop
+local function applyBHop()
+    pcall(function()
+        local ch=LocalPlayer.Character
+        if not ch then return end
+        local hum=ch:FindFirstChild("Humanoid")
+        if hum and Settings.BHop and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            if hum.FloorMaterial~=Enum.Material.Air then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+        end
+    end)
+end
+-- Anti Recoil: компенсация дёргов камеры вверх при стрельбе
+local lastLookY=nil
+local function applyAntiRecoil(shooting)
+    pcall(function()
+        local curY=Camera.CFrame.LookVector.Y
+        if shooting and lastLookY then
+            local delta=curY-lastLookY
+            if delta>0.001 then Camera.CFrame=Camera.CFrame*CFrame.Angles(-delta*0.9,0,0) end
+        end
+        lastLookY=Camera.CFrame.LookVector.Y
+    end)
+end
+-- Silent Aim нажатие
+UserInputService.InputBegan:Connect(function(i)
+    if Settings.SilentAim and i.UserInputType==Settings.SilentAimKeybind then
+        local tg=getBestTarget(Settings.SilentAimFOV,true)
+        if tg and tg.Character then
+            local tp=tg.Character:FindFirstChild(Settings.AimTargetPart) or tg.Character:FindFirstChild("Head")
+            if tp then Camera.CFrame=CFrame.new(Camera.CFrame.Position,tp.Position) end
+        end
+    end
+end)
+-- Main Loop
+RunService.RenderStepped:Connect(function()
+    if fovCircle then fovCircle.Visible=Settings.AimShowFOV and Settings.AimEnabled;fovCircle.Radius=Settings.AimFOV;fovCircle.Position=Vector2.new(Camera.ViewportSize.X/2,Camera.ViewportSize.Y/2) end
+    if silentCircle then silentCircle.Visible=Settings.SilentAim;silentCircle.Radius=Settings.SilentAimFOV;silentCircle.Position=Vector2.new(Camera.ViewportSize.X/2,Camera.ViewportSize.Y/2) end
+    local shooting=UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
+    if Settings.AimEnabled then
+        local tg=getBestTarget(nil,Settings.AimVisibleCheck)
+        if tg and tg.Character then
+            local tp=tg.Character:FindFirstChild(Settings.AimTargetPart) or tg.Character:FindFirstChild("Head")
+            if tp then Camera.CFrame=Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position,tp.Position),math.clamp(1-(Settings.AimSmooth/110),0.01,0.99)) end
+        end
+    end
+    -- Bullet Manipulation: пока стреляешь камера в голову = пули в голову
+    if (Settings.BulletManipulation or Settings.SilentAim) and shooting then
+        local tg=getBestTarget(Settings.SilentAimFOV,true)
+        if tg and tg.Character then
+            local tp=tg.Character:FindFirstChild(Settings.AimTargetPart) or tg.Character:FindFirstChild("Head")
+            if tp then Camera.CFrame=CFrame.new(Camera.CFrame.Position,tp.Position) end
+        end
+    end
+    -- Anti Spread: стабилизация прицела при стрельбе
+    if Settings.AntiSpread and shooting then
+        pcall(function()
+            local cf=Camera.CFrame
+            Camera.CFrame=CFrame.new(cf.Position,cf.Position+cf.LookVector)
+        end)
+    end
+    if Settings.NoRecoil then applyAntiRecoil(shooting) end
+    if Settings.NoClip then applyNoClip() end
+    applyFly()
+    applyBHop()
+    applyRapidFire()
+    for p,_ in pairs(espObjects) do updateESP(p) end
+end)
+-- Language Menu
+local LangGui=Instance.new("ScreenGui");LangGui.Name="LangSelect";LangGui.ResetOnSpawn=false;LangGui.IgnoreGuiInset=true;LangGui.DisplayOrder=999999;LangGui.Parent=LocalPlayer:WaitForChild("PlayerGui")
+local LangFrame=Instance.new("Frame");LangFrame.Size=UDim2.new(0,320,0,180);LangFrame.Position=UDim2.new(0.5,-160,0.5,-90);LangFrame.BackgroundColor3=Color3.fromRGB(20,20,30);LangFrame.BorderSizePixel=0;LangFrame.Active=true;LangFrame.Parent=LangGui
+local LangCorner=Instance.new("UICorner");LangCorner.CornerRadius=UDim.new(0,10);LangCorner.Parent=LangFrame
+local LangStroke=Instance.new("UIStroke");LangStroke.Color=Color3.fromRGB(138,43,226);LangStroke.Thickness=2;LangStroke.Parent=LangFrame
+local LangTitle=Instance.new("TextLabel");LangTitle.Size=UDim2.new(1,0,0,40);LangTitle.BackgroundTransparency=1;LangTitle.Text="Select Language / Выберите язык";LangTitle.TextColor3=Color3.fromRGB(255,255,255);LangTitle.TextSize=16;LangTitle.Font=Enum.Font.GothamBold;LangTitle.Parent=LangFrame
+local LangLayout=Instance.new("UIListLayout");LangLayout.Padding=UDim.new(0,15);LangLayout.HorizontalAlignment=Enum.HorizontalAlignment.Center;LangLayout.Parent=LangFrame
+local LangPadding=Instance.new("UIPadding");LangPadding.PaddingTop=UDim.new(0,50);LangPadding.Parent=LangFrame
+local BtnRu=Instance.new("TextButton");BtnRu.Size=UDim2.new(0,200,0,40);BtnRu.BackgroundColor3=Color3.fromRGB(40,40,55);BtnRu.Text="Русский";BtnRu.TextColor3=Color3.fromRGB(255,255,255);BtnRu.TextSize=15;BtnRu.Font=Enum.Font.GothamBold;BtnRu.BorderSizePixel=0;BtnRu.Active=true;BtnRu.Parent=LangFrame
+local BtnRuCorner=Instance.new("UICorner");BtnRuCorner.CornerRadius=UDim.new(0,8);BtnRuCorner.Parent=BtnRu
+local BtnEn=Instance.new("TextButton");BtnEn.Size=UDim2.new(0,200,0,40);BtnEn.BackgroundColor3=Color3.fromRGB(40,40,55);BtnEn.Text="English";BtnEn.TextColor3=Color3.fromRGB(255,255,255);BtnEn.TextSize=15;BtnEn.Font=Enum.Font.GothamBold;BtnEn.BorderSizePixel=0;BtnEn.Active=true;BtnEn.Parent=LangFrame
+local BtnEnCorner=Instance.new("UICorner");BtnEnCorner.CornerRadius=UDim.new(0,8);BtnEnCorner.Parent=BtnEn
+local function StartMainGUI()
+    LangGui:Destroy()
+    local ScreenGui=Instance.new("ScreenGui");ScreenGui.Name="REL1LSY_HUB";ScreenGui.ResetOnSpawn=false;ScreenGui.IgnoreGuiInset=true;ScreenGui.DisplayOrder=99999;ScreenGui.Parent=LocalPlayer:WaitForChild("PlayerGui")
+    local MainFrame=Instance.new("Frame");MainFrame.Size=UDim2.new(0,520,0,420);MainFrame.Position=UDim2.new(0.5,-260,0.5,-210);MainFrame.BackgroundColor3=Color3.fromRGB(20,20,30);MainFrame.BorderSizePixel=0;MainFrame.Active=true;MainFrame.Draggable=false;MainFrame.Visible=true;MainFrame.Parent=ScreenGui
+    local MainCorner=Instance.new("UICorner");MainCorner.CornerRadius=UDim.new(0,8);MainCorner.Parent=MainFrame
+    local MainStroke=Instance.new("UIStroke");MainStroke.Color=Settings.GUIColor;MainStroke.Thickness=2;MainStroke.Parent=MainFrame
+    local TopBar=Instance.new("Frame");TopBar.Size=UDim2.new(1,0,0,35);TopBar.BackgroundColor3=Color3.fromRGB(25,25,35);TopBar.BorderSizePixel=0;TopBar.Parent=MainFrame
+    local Title=Instance.new("TextLabel");Title.Size=UDim2.new(0.5,0,1,0);Title.Position=UDim2.new(0,10,0,0);Title.BackgroundTransparency=1;Title.Text=t("title");Title.TextColor3=Color3.fromRGB(255,255,255);Title.TextSize=16;Title.Font=Enum.Font.GothamBold;Title.TextXAlignment=Enum.TextXAlignment.Left;Title.Parent=TopBar
+    local VersionBadge=Instance.new("TextLabel");VersionBadge.Size=UDim2.new(0,40,0,20);VersionBadge.Position=UDim2.new(0,130,0.5,-10);VersionBadge.BackgroundColor3=Settings.GUIColor;VersionBadge.Text=t("version");VersionBadge.TextColor3=Color3.fromRGB(255,255,255);VersionBadge.TextSize=11;VersionBadge.Font=Enum.Font.GothamBold;VersionBadge.BorderSizePixel=0;VersionBadge.Parent=TopBar
+    local VersionCorner=Instance.new("UICorner");VersionCorner.CornerRadius=UDim.new(0,4);VersionCorner.Parent=VersionBadge
+    local CloseBtn=Instance.new("TextButton");CloseBtn.Size=UDim2.new(0,25,0,25);CloseBtn.Position=UDim2.new(1,-30,0,5);CloseBtn.BackgroundColor3=Color3.fromRGB(255,50,50);CloseBtn.Text="X";CloseBtn.TextColor3=Color3.fromRGB(255,255,255);CloseBtn.Font=Enum.Font.GothamBlack;CloseBtn.TextSize=14;CloseBtn.BorderSizePixel=0;CloseBtn.Parent=TopBar
+    CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible=false;Settings.MenuOpen=false end)
+    local TabContainer=Instance.new("Frame");TabContainer.Size=UDim2.new(0,100,1,-35);TabContainer.Position=UDim2.new(0,0,0,35);TabContainer.BackgroundColor3=Color3.fromRGB(22,22,32);TabContainer.BorderSizePixel=0;TabContainer.Parent=MainFrame
+    local TabLayout=Instance.new("UIListLayout");TabLayout.Padding=UDim.new(0,5);TabLayout.Parent=TabContainer
+    local TabPadding=Instance.new("UIPadding");TabPadding.PaddingTop=UDim.new(0,10);TabPadding.PaddingLeft=UDim.new(0,5);TabPadding.PaddingRight=UDim.new(0,5);TabPadding.Parent=TabContainer
+    local ContentContainer=Instance.new("ScrollingFrame");ContentContainer.Size=UDim2.new(1,-100,1,-35);ContentContainer.Position=UDim2.new(0,100,0,35);ContentContainer.BackgroundTransparency=1;ContentContainer.BorderSizePixel=0;ContentContainer.ScrollBarThickness=4;ContentContainer.ScrollBarImageColor3=Settings.GUIColor;ContentContainer.CanvasSize=UDim2.new(0,0,0,0);ContentContainer.AutomaticCanvasSize=Enum.AutomaticSize.Y;ContentContainer.Parent=MainFrame
+    local Tabs={}
+    local TabOrder={"aim","visuals","rage","misc","settings"}
+    local function CreateTab(name,key)
+        local btn=Instance.new("TextButton");btn.Size=UDim2.new(1,0,0,30);btn.BackgroundColor3=Color3.fromRGB(30,30,40);btn.Text=name;btn.TextColor3=Color3.fromRGB(200,200,200);btn.TextSize=13;btn.Font=Enum.Font.GothamBold;btn.BorderSizePixel=0;btn.Parent=TabContainer
+        local bc=Instance.new("UICorner");bc.CornerRadius=UDim.new(0,4);bc.Parent=btn
+        local frame=Instance.new("Frame");frame.Size=UDim2.new(1,0,0,0);frame.AutomaticSize=Enum.AutomaticSize.Y;frame.BackgroundTransparency=1;frame.Visible=false;frame.Parent=ContentContainer
+        local l=Instance.new("UIListLayout");l.Padding=UDim.new(0,5);l.Parent=frame
+        local p=Instance.new("UIPadding");p.PaddingTop=UDim.new(0,5);p.PaddingLeft=UDim.new(0,5);p.PaddingRight=UDim.new(0,5);p.PaddingBottom=UDim.new(0,5);p.Parent=frame
+        Tabs[key]={Button=btn,Frame=frame}
+        btn.MouseButton1Click:Connect(function() for _,tb in pairs(Tabs) do TweenService:Create(tb.Button,TweenInfo.new(0.2),{BackgroundColor3=Color3.fromRGB(30,30,40)}):Play();tb.Frame.Visible=false end TweenService:Create(btn,TweenInfo.new(0.2),{BackgroundColor3=Settings.GUIColor}):Play();frame.Visible=true end)
+        return frame
+    end
+    local AimTab=CreateTab(t("aim"),"aim")
+    local VisTab=CreateTab(t("visuals"),"visuals")
+    local RageTab=CreateTab(t("rage"),"rage")
+    local MiscTab=CreateTab(t("misc"),"misc")
+    local SetTab=CreateTab(t("settings"),"settings")
+    TweenService:Create(Tabs["aim"].Button,TweenInfo.new(0.2),{BackgroundColor3=Settings.GUIColor}):Play()
+    Tabs["aim"].Frame.Visible=true
+    local UIElements,ColorElements,SliderDragging={},{},false
+    local gDrag,gStart,gPos=false,nil,nil
+    TopBar.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then gDrag=true;gStart=i.Position;gPos=MainFrame.Position end end)
+    TopBar.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then gDrag=false end end)
+    UserInputService.InputChanged:Connect(function(i) if gDrag and i.UserInputType==Enum.UserInputType.MouseMovement and not SliderDragging then local d=i.Position-gStart;MainFrame.Position=UDim2.new(gPos.X.Scale,gPos.X.Offset+d.X,gPos.Y.Scale,gPos.Y.Offset+d.Y) end end)
+    local function CreateToggle(parent,key,def,cb)
+        local f=Instance.new("Frame");f.Size=UDim2.new(1,0,0,30);f.BackgroundColor3=Color3.fromRGB(28,28,38);f.BorderSizePixel=0;f.Parent=parent
+        local c=Instance.new("UICorner");c.CornerRadius=UDim.new(0,4);c.Parent=f
+        local l=Instance.new("TextLabel");l.Size=UDim2.new(0.7,0,1,0);l.Position=UDim2.new(0,10,0,0);l.BackgroundTransparency=1;l.Text=t(key);l.TextColor3=Color3.fromRGB(200,200,200);l.TextSize=12;l.Font=Enum.Font.Gotham;l.TextXAlignment=Enum.TextXAlignment.Left;l.Parent=f
+        table.insert(UIElements,{Element=l,Key=key})
+        local b=Instance.new("TextButton");b.Size=UDim2.new(0,30,0,16);b.Position=UDim2.new(1,-40,0.5,-8);b.BackgroundColor3=def and Settings.GUIColor or Color3.fromRGB(50,50,60);b.Text="";b.BorderSizePixel=0;b.Parent=f
+        local bc=Instance.new("UICorner");bc.CornerRadius=UDim.new(1,0);bc.Parent=b
+        local ind=Instance.new("Frame");ind.Size=UDim2.new(0,12,0,12);ind.Position=def and UDim2.new(1,-14,0.5,-6) or UDim2.new(0,2,0.5,-6);ind.BackgroundColor3=Color3.fromRGB(255,255,255);ind.BorderSizePixel=0;ind.Parent=b
+        local ic=Instance.new("UICorner");ic.CornerRadius=UDim.new(1,0);ic.Parent=ind
+        table.insert(ColorElements,{Toggle=b,Indicator=ind,State=def})
+        local st=def
+        b.MouseButton1Click:Connect(function() st=not st;TweenService:Create(b,TweenInfo.new(0.2,Enum.EasingStyle.Quad),{BackgroundColor3=st and Settings.GUIColor or Color3.fromRGB(50,50,60)}):Play();TweenService:Create(ind,TweenInfo.new(0.2,Enum.EasingStyle.Quad),{Position=st and UDim2.new(1,-14,0.5,-6) or UDim2.new(0,2,0.5,-6)}):Play();cb(st) end)
+    end
+    local function CreateSlider(parent,key,mn,mx,def,cb)
+        local f=Instance.new("Frame");f.Size=UDim2.new(1,0,0,50);f.BackgroundColor3=Color3.fromRGB(28,28,38);f.BorderSizePixel=0;f.Parent=parent
+        local c=Instance.new("UICorner");c.CornerRadius=UDim.new(0,4);c.Parent=f
+        local l=Instance.new("TextLabel");l.Size=UDim2.new(1,-20,0,18);l.Position=UDim2.new(0,10,0,3);l.BackgroundTransparency=1;l.Text=t(key)..": "..def;l.TextColor3=Color3.fromRGB(200,200,200);l.TextSize=12;l.Font=Enum.Font.Gotham;l.TextXAlignment=Enum.TextXAlignment.Left;l.Parent=f
+        table.insert(UIElements,{Element=l,Key=key,IsSlider=true})
+        local bar=Instance.new("Frame");bar.Size=UDim2.new(0.9,0,0,10);bar.Position=UDim2.new(0.05,0,0,28);bar.BackgroundColor3=Color3.fromRGB(40,40,50);bar.BorderSizePixel=0;bar.Parent=f
+        local bc=Instance.new("UICorner");bc.CornerRadius=UDim.new(1,0);bc.Parent=bar
+        local fill=Instance.new("Frame");fill.Size=UDim2.new((def-mn)/(mx-mn),0,1,0);fill.BackgroundColor3=Settings.GUIColor;fill.BorderSizePixel=0;fill.Parent=bar
+        local fc=Instance.new("UICorner");fc.CornerRadius=UDim.new(1,0);fc.Parent=fill
+        table.insert(ColorElements,{Fill=fill})
+        local ind=Instance.new("Frame");ind.Size=UDim2.new(0,16,0,16);ind.Position=UDim2.new((def-mn)/(mx-mn),-8,0.5,-8);ind.BackgroundColor3=Color3.fromRGB(255,255,255);ind.BorderSizePixel=0;ind.Parent=bar
+        local ic=Instance.new("UICorner");ic.CornerRadius=UDim.new(1,0);ic.Parent=ind
+        local hb=Instance.new("Frame");hb.Size=UDim2.new(0.9,0,0,25);hb.Position=UDim2.new(0.05,0,0,20);hb.BackgroundTransparency=1;hb.BorderSizePixel=0;hb.Parent=f
+        local dr=false
+        hb.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then dr=true;SliderDragging=true end end)
+        hb.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then dr=false;SliderDragging=false end end)
+        UserInputService.InputChanged:Connect(function(i) if dr and i.UserInputType==Enum.UserInputType.MouseMovement then local pc=math.clamp((i.Position.X-bar.AbsolutePosition.X)/bar.AbsoluteSize.X,0,1);fill.Size=UDim2.new(pc,0,1,0);ind.Position=UDim2.new(pc,-8,0.5,-8);local v=math.floor(mn+(mx-mn)*pc);l.Text=t(key)..": "..v;cb(v) end end)
+    end
+    local function CreateDropdown(parent,key,opts,def,cb)
+        local f=Instance.new("Frame");f.Size=UDim2.new(1,0,0,30);f.BackgroundColor3=Color3.fromRGB(28,28,38);f.BorderSizePixel=0;f.Parent=parent
+        local c=Instance.new("UICorner");c.CornerRadius=UDim.new(0,4);c.Parent=f
+        local l=Instance.new("TextLabel");l.Size=UDim2.new(0.5,0,1,0);l.Position=UDim2.new(0,10,0,0);l.BackgroundTransparency=1;l.Text=t(key);l.TextColor3=Color3.fromRGB(200,200,200);l.TextSize=12;l.Font=Enum.Font.Gotham;l.TextXAlignment=Enum.TextXAlignment.Left;l.Parent=f
+        table.insert(UIElements,{Element=l,Key=key})
+        local b=Instance.new("TextButton");b.Size=UDim2.new(0,90,0,20);b.Position=UDim2.new(1,-100,0.5,-10);b.BackgroundColor3=Color3.fromRGB(40,40,50);b.Text=def;b.TextColor3=Color3.fromRGB(255,255,255);b.TextSize=11;b.Font=Enum.Font.GothamBold;b.BorderSizePixel=0;b.Parent=f
+        local bc=Instance.new("UICorner");bc.CornerRadius=UDim.new(0,4);bc.Parent=b
+        local ci=table.find(opts,def) or 1
+        b.MouseButton1Click:Connect(function() ci=ci%#opts+1;b.Text=opts[ci];cb(opts[ci]) end)
+    end
+    local function CreateKeybind(parent,key,def,cb)
+        local f=Instance.new("Frame");f.Size=UDim2.new(1,0,0,30);f.BackgroundColor3=Color3.fromRGB(28,28,38);f.BorderSizePixel=0;f.Parent=parent
+        local c=Instance.new("UICorner");c.CornerRadius=UDim.new(0,4);c.Parent=f
+        local l=Instance.new("TextLabel");l.Size=UDim2.new(0.5,0,1,0);l.Position=UDim2.new(0,10,0,0);l.BackgroundTransparency=1;l.Text=t(key);l.TextColor3=Color3.fromRGB(200,200,200);l.TextSize=12;l.Font=Enum.Font.Gotham;l.TextXAlignment=Enum.TextXAlignment.Left;l.Parent=f
+        table.insert(UIElements,{Element=l,Key=key})
+        local b=Instance.new("TextButton");b.Size=UDim2.new(0,80,0,20);b.Position=UDim2.new(1,-90,0.5,-10);b.BackgroundColor3=Color3.fromRGB(40,40,50);b.Text=tostring(def);b.TextColor3=Color3.fromRGB(255,255,255);b.TextSize=11;b.Font=Enum.Font.GothamBold;b.BorderSizePixel=0;b.Parent=f
+        local bc=Instance.new("UICorner");bc.CornerRadius=UDim.new(0,4);bc.Parent=b
+        b.MouseButton1Click:Connect(function() b.Text="...";local i=UserInputService.InputBegan:Wait();if i.KeyCode~=Enum.KeyCode.Unknown then b.Text=i.KeyCode.Name;cb(i.KeyCode) elseif i.UserInputType~=Enum.UserInputType.MouseButton1 then b.Text=i.UserInputType.Name;cb(i.UserInputType) end end)
+    end
+    local function CreateColorPicker(parent,key,def,cb)
+        local f=Instance.new("Frame");f.Size=UDim2.new(1,0,0,80);f.BackgroundColor3=Color3.fromRGB(28,28,38);f.BorderSizePixel=0;f.Parent=parent
+        local c=Instance.new("UICorner");c.CornerRadius=UDim.new(0,4);c.Parent=f
+        local l=Instance.new("TextLabel");l.Size=UDim2.new(1,-20,0,18);l.Position=UDim2.new(0,10,0,3);l.BackgroundTransparency=1;l.Text=t(key);l.TextColor3=Color3.fromRGB(200,200,200);l.TextSize=12;l.Font=Enum.Font.Gotham;l.TextXAlignment=Enum.TextXAlignment.Left;l.Parent=f
+        table.insert(UIElements,{Element=l,Key=key})
+        local pv=Instance.new("Frame");pv.Size=UDim2.new(0,25,0,18);pv.Position=UDim2.new(1,-35,0,5);pv.BackgroundColor3=def;pv.BorderSizePixel=0;pv.Parent=f
+        local pc=Instance.new("UICorner");pc.CornerRadius=UDim.new(0,4);pc.Parent=pv
+        local function rs(yp,cn,vl)
+            local bar=Instance.new("Frame");bar.Size=UDim2.new(0.8,0,0,6);bar.Position=UDim2.new(0.05,0,0,yp);bar.BackgroundColor3=Color3.fromRGB(40,40,50);bar.BorderSizePixel=0;bar.Parent=f
+            local bc=Instance.new("UICorner");bc.CornerRadius=UDim.new(1,0);bc.Parent=bar
+            local fill=Instance.new("Frame");fill.Size=UDim2.new(vl/255,0,1,0);fill.BackgroundColor3=cn=="R" and Color3.fromRGB(255,0,0) or cn=="G" and Color3.fromRGB(0,255,0) or Color3.fromRGB(0,0,255);fill.BorderSizePixel=0;fill.Parent=bar
+            local fc=Instance.new("UICorner");fc.CornerRadius=UDim.new(1,0);fc.Parent=fill
+            local ind=Instance.new("Frame");ind.Size=UDim2.new(0,10,0,10);ind.Position=UDim2.new(vl/255,-5,0.5,-5);ind.BackgroundColor3=Color3.fromRGB(255,255,255);ind.BorderSizePixel=0;ind.Parent=bar
+            local ic=Instance.new("UICorner");ic.CornerRadius=UDim.new(1,0);ic.Parent=ind
+            local hb=Instance.new("Frame");hb.Size=UDim2.new(0.8,0,0,20);hb.Position=UDim2.new(0.05,0,0,yp-7);hb.BackgroundTransparency=1;hb.BorderSizePixel=0;hb.Parent=f
+            local dr=false
+            hb.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then dr=true;SliderDragging=true end end)
+            hb.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then dr=false;SliderDragging=false end end)
+            UserInputService.InputChanged:Connect(function(i) if dr and i.UserInputType==Enum.UserInputType.MouseMovement then local pc2=math.clamp((i.Position.X-bar.AbsolutePosition.X)/bar.AbsoluteSize.X,0,1);fill.Size=UDim2.new(pc2,0,1,0);ind.Position=UDim2.new(pc2,-5,0.5,-5);local v=math.floor(255*pc2);local r=cn=="R" and v or pv.BackgroundColor3.R*255;local g=cn=="G" and v or pv.BackgroundColor3.G*255;local b=cn=="B" and v or pv.BackgroundColor3.B*255;pv.BackgroundColor3=Color3.fromRGB(r,g,b);cb(Color3.fromRGB(r,g,b)) end end)
+        end
+        rs(28,"R",def.R*255);rs(48,"G",def.G*255);rs(68,"B",def.B*255)
+    end
+    local allAcc={}
+    local function CreateAccordionToggle(parent,key,def,cb,ccb)
+        local ct=Instance.new("Frame");ct.Size=UDim2.new(1,0,0,30);ct.BackgroundColor3=Color3.fromRGB(28,28,38);ct.BorderSizePixel=0;ct.Parent=parent
+        local c=Instance.new("UICorner");c.CornerRadius=UDim.new(0,4);c.Parent=ct
+        local hb=Instance.new("TextButton");hb.Size=UDim2.new(0.7,0,1,0);hb.Position=UDim2.new(0,10,0,0);hb.BackgroundTransparency=1;hb.Text="▶ "..t(key);hb.TextColor3=Color3.fromRGB(200,200,200);hb.TextSize=12;hb.Font=Enum.Font.GothamBold;hb.TextXAlignment=Enum.TextXAlignment.Left;hb.Parent=ct
+        table.insert(UIElements,{Element=hb,Key=key,IsAccordion=true})
+        local tb=Instance.new("TextButton");tb.Size=UDim2.new(0,30,0,16);tb.Position=UDim2.new(1,-40,0.5,-8);tb.BackgroundColor3=def and Settings.GUIColor or Color3.fromRGB(50,50,60);tb.Text="";tb.BorderSizePixel=0;tb.Parent=ct
+        local tc=Instance.new("UICorner");tc.CornerRadius=UDim.new(1,0);tc.Parent=tb
+        local ti=Instance.new("Frame");ti.Size=UDim2.new(0,12,0,12);ti.Position=def and UDim2.new(1,-14,0.5,-6) or UDim2.new(0,2,0.5,-6);ti.BackgroundColor3=Color3.fromRGB(255,255,255);ti.BorderSizePixel=0;ti.Parent=tb
+        local tic=Instance.new("UICorner");tic.CornerRadius=UDim.new(1,0);tic.Parent=ti
+        table.insert(ColorElements,{Toggle=tb,Indicator=ti,State=def})
+        local cf=Instance.new("Frame");cf.Size=UDim2.new(1,0,0,0);cf.AutomaticSize=Enum.AutomaticSize.Y;cf.BackgroundTransparency=1;cf.Visible=false;cf.Parent=parent
+        local cl=Instance.new("UIListLayout");cl.Padding=UDim.new(0,5);cl.Parent=cf
+        local ex=false;local st=def
+        table.insert(allAcc,{Header=hb,Content=cf})
+        hb.MouseButton1Click:Connect(function() ex=not ex;hb.Text=(ex and "▼ " or "▶ ")..t(key);cf.Visible=ex for _,a in ipairs(allAcc) do if a.Header~=hb then a.Content.Visible=false for _,u in ipairs(UIElements) do if u.Element==a.Header then a.Header.Text="▶ "..t(u.Key) break end end end end end)
+        tb.MouseButton1Click:Connect(function() st=not st;TweenService:Create(tb,TweenInfo.new(0.2,Enum.EasingStyle.Quad),{BackgroundColor3=st and Settings.GUIColor or Color3.fromRGB(50,50,60)}):Play();TweenService:Create(ti,TweenInfo.new(0.2,Enum.EasingStyle.Quad),{Position=st and UDim2.new(1,-14,0.5,-6) or UDim2.new(0,2,0.5,-6)}):Play();cb(st) end)
+        if ccb then ccb(cf) end
+    end
+    local function CreateAccordion(parent,key,ccb)
+        local ct=Instance.new("Frame");ct.Size=UDim2.new(1,0,0,30);ct.BackgroundColor3=Color3.fromRGB(28,28,38);ct.BorderSizePixel=0;ct.Parent=parent
+        local c=Instance.new("UICorner");c.CornerRadius=UDim.new(0,4);c.Parent=ct
+        local hb=Instance.new("TextButton");hb.Size=UDim2.new(1,0,1,0);hb.BackgroundTransparency=1;hb.Text="▶ "..t(key);hb.TextColor3=Color3.fromRGB(200,200,200);hb.TextSize=12;hb.Font=Enum.Font.GothamBold;hb.TextXAlignment=Enum.TextXAlignment.Left;hb.Parent=ct
+        table.insert(UIElements,{Element=hb,Key=key,IsAccordion=true})
+        local cf=Instance.new("Frame");cf.Size=UDim2.new(1,0,0,0);cf.AutomaticSize=Enum.AutomaticSize.Y;cf.BackgroundTransparency=1;cf.Visible=false;cf.Parent=parent
+        local cl=Instance.new("UIListLayout");cl.Padding=UDim.new(0,5);cl.Parent=cf
+        local ex=false
+        table.insert(allAcc,{Header=hb,Content=cf})
+        hb.MouseButton1Click:Connect(function() ex=not ex;hb.Text=(ex and "▼ " or "▶ ")..t(key);cf.Visible=ex for _,a in ipairs(allAcc) do if a.Header~=hb then a.Content.Visible=false for _,u in ipairs(UIElements) do if u.Element==a.Header then a.Header.Text="▶ "..t(u.Key) break end end end end end)
+        if ccb then ccb(cf) end
+    end
+    CreateAccordionToggle(AimTab,"aim_settings",false,function(v) Settings.AimEnabled=v end,function(c)
+        CreateSlider(c,"aim_fov",50,500,200,function(v) Settings.AimFOV=v end)
+        CreateSlider(c,"aim_smooth",0,100,0,function(v) Settings.AimSmooth=v end)
+        CreateToggle(c,"aim_team",false,function(v) Settings.AimTeamCheck=v end)
+        CreateToggle(c,"aim_visible",false,function(v) Settings.AimVisibleCheck=v end)
+        CreateDropdown(c,"aim_target",{"Head","HumanoidRootPart"},"Head",function(v) Settings.AimTargetPart=v end)
+        CreateToggle(c,"aim_showfov",true,function(v) Settings.AimShowFOV=v end)
+        CreateKeybind(c,"aim_keybind",Settings.AimKeybind,function(v) Settings.AimKeybind=v end)
+    end)
+    CreateAccordionToggle(AimTab,"silent_settings",false,function(v) Settings.SilentAim=v end,function(c)
+        CreateSlider(c,"silent_fov",50,300,150,function(v) Settings.SilentAimFOV=v end)
+        CreateKeybind(c,"silent_key",Settings.SilentAimKeybind,function(v) Settings.SilentAimKeybind=v end)
+        CreateToggle(c,"bullet_manipulation",false,function(v) Settings.BulletManipulation=v end)
+    end)
+    CreateToggle(VisTab,"vis_enable",false,function(v) Settings.ESPEnabled=v end)
+    CreateToggle(VisTab,"vis_team",false,function(v) Settings.ESPTeamCheck=v end)
+    CreateToggle(VisTab,"vis_box",true,function(v) Settings.ESPBox=v end)
+    CreateToggle(VisTab,"vis_health",true,function(v) Settings.ESPHealthBar=v end)
+    CreateToggle(VisTab,"vis_name",true,function(v) Settings.ESPName=v end)
+    CreateToggle(VisTab,"vis_distance",true,function(v) Settings.ESPDistance=v end)
+    CreateSlider(VisTab,"vis_thickness",1,5,2,function(v) Settings.ESPThickness=v end)
+    CreateColorPicker(VisTab,"vis_color",Settings.ESPColor,function(v) Settings.ESPColor=v;for _,d in pairs(espObjects) do for _,l in ipairs(d.Box) do l.Color=v end end end)
+    CreateAccordionToggle(VisTab,"skeleton_settings",true,function(v) Settings.ESPSkeleton=v end,function(c) CreateColorPicker(c,"skeleton_color",Settings.ESPChamsColor,function(v) Settings.ESPChamsColor=v end) end)
+    CreateAccordionToggle(VisTab,"tracer_settings",false,function(v) Settings.ESPTracers=v end,function(c) CreateColorPicker(c,"tracer_color",Settings.ESPTracersColor,function(v) Settings.ESPTracersColor=v end) end)
+    CreateToggle(RageTab,"rage_antispread",false,function(v) Settings.AntiSpread=v end)
+    CreateToggle(RageTab,"rage_norecoil",false,function(v) Settings.NoRecoil=v end)
+    CreateToggle(RageTab,"rage_noclip",false,function(v) Settings.NoClip=v end)
+    CreateToggle(RageTab,"rage_fly",false,function(v) Settings.Fly=v end)
+    CreateAccordion(RageTab,"rage_fly_settings",function(c) CreateSlider(c,"rage_speed",10,200,50,function(v) Settings.FlySpeed=v end) end)
+    CreateToggle(RageTab,"rage_bhop",false,function(v) Settings.BHop=v end)
+    CreateToggle(RageTab,"rage_rapidfire",false,function(v) Settings.RapidFire=v end)
+    CreateAccordion(RageTab,"rage_rapidfire_settings",function(c) CreateSlider(c,"rage_rapidfire_delay",10,500,80,function(v) Settings.RapidFireDelay=v/1000 end) end)
+    CreateToggle(MiscTab,"misc_hud_toggle",false,function(v) Settings.HUDVisible=not v;HUDGui.Enabled=not v end)
+    CreateToggle(MiscTab,"misc_status",false,function(v) Settings.ShowStatusTable=v;StatusFrame.Visible=v end)
+    CreateKeybind(SetTab,"set_keybind",Settings.MenuKey,function(v) Settings.MenuKey=v end)
+    CreateToggle(SetTab,"set_antiafk",true,function(v) Settings.AntiAFK=v end)
+    CreateColorPicker(SetTab,"set_guicolor",Settings.GUIColor,function(v) Settings.GUIColor=v;MainStroke.Color=v;VersionBadge.BackgroundColor3=v;HUDStroke.Color=v;StatusStroke.Color=v;ContentContainer.ScrollBarImageColor3=v;TweenService:Create(Tabs["aim"].Button,TweenInfo.new(0.2),{BackgroundColor3=v}):Play();for _,e in ipairs(ColorElements) do if e.Toggle and e.State then TweenService:Create(e.Toggle,TweenInfo.new(0.2),{BackgroundColor3=v}):Play() end if e.Fill then TweenService:Create(e.Fill,TweenInfo.new(0.2),{BackgroundColor3=v}):Play() end end end)
+    local cfgFrame=Instance.new("Frame");cfgFrame.Size=UDim2.new(1,0,0,70);cfgFrame.BackgroundColor3=Color3.fromRGB(28,28,38);cfgFrame.BorderSizePixel=0;cfgFrame.Parent=SetTab
+    local cfgC=Instance.new("UICorner");cfgC.CornerRadius=UDim.new(0,4);cfgC.Parent=cfgFrame
+    local cfgBox=Instance.new("TextBox");cfgBox.Size=UDim2.new(0.5,0,0,25);cfgBox.Position=UDim2.new(0.05,0,0,10);cfgBox.BackgroundColor3=Color3.fromRGB(40,40,50);cfgBox.Text="default";cfgBox.TextColor3=Color3.fromRGB(255,255,255);cfgBox.TextSize=11;cfgBox.Font=Enum.Font.Gotham;cfgBox.PlaceholderText="Config name";cfgBox.Parent=cfgFrame
+    local cfgBC=Instance.new("UICorner");cfgBC.CornerRadius=UDim.new(0,4);cfgBC.Parent=cfgBox
+    local saveB=Instance.new("TextButton");saveB.Size=UDim2.new(0.2,0,0,25);saveB.Position=UDim2.new(0.6,0,0,10);saveB.BackgroundColor3=Settings.GUIColor;saveB.Text=t("config_save");saveB.TextColor3=Color3.fromRGB(255,255,255);saveB.TextSize=11;saveB.Font=Enum.Font.GothamBold;saveB.BorderSizePixel=0;saveB.Parent=cfgFrame
+    local saveC=Instance.new("UICorner");saveC.CornerRadius=UDim.new(0,4);saveC.Parent=saveB
+    local loadB=Instance.new("TextButton");loadB.Size=UDim2.new(0.2,0,0,25);loadB.Position=UDim2.new(0.82,0,0,10);loadB.BackgroundColor3=Color3.fromRGB(50,50,60);loadB.Text=t("config_load");loadB.TextColor3=Color3.fromRGB(255,255,255);loadB.TextSize=11;loadB.Font=Enum.Font.GothamBold;loadB.BorderSizePixel=0;loadB.Parent=cfgFrame
+    local loadC=Instance.new("UICorner");loadC.CornerRadius=UDim.new(0,4);loadC.Parent=loadB
+    saveB.MouseButton1Click:Connect(function() SaveConfig(cfgBox.Text);saveB.Text="OK!";task.delay(1,function() saveB.Text=t("config_save") end) end)
+    loadB.MouseButton1Click:Connect(function() LoadConfig(cfgBox.Text);loadB.Text="OK!";task.delay(1,function() loadB.Text=t("config_load") end) end)
+    local LangButton=Instance.new("TextButton");LangButton.Size=UDim2.new(1,0,0,30);LangButton.BackgroundColor3=Color3.fromRGB(40,40,50);LangButton.Text=CurrentLang=="ru" and "Русский" or "English";LangButton.TextColor3=Color3.fromRGB(255,255,255);LangButton.TextSize=12;LangButton.Font=Enum.Font.GothamBold;LangButton.BorderSizePixel=0;LangButton.Parent=SetTab
+    local langC=Instance.new("UICorner");langC.CornerRadius=UDim.new(0,4);langC.Parent=LangButton
+    local UnloadButton=Instance.new("TextButton");UnloadButton.Size=UDim2.new(1,0,0,30);UnloadButton.BackgroundColor3=Color3.fromRGB(150,30,30);UnloadButton.Text=t("set_unload");UnloadButton.TextColor3=Color3.fromRGB(255,255,255);UnloadButton.TextSize=13;UnloadButton.Font=Enum.Font.GothamBold;UnloadButton.BorderSizePixel=0;UnloadButton.Parent=SetTab
+    local uC=Instance.new("UICorner");uC.CornerRadius=UDim.new(0,4);uC.Parent=UnloadButton
+    LangButton.MouseButton1Click:Connect(function() CurrentLang=CurrentLang=="ru" and "en" or "ru";LangButton.Text=CurrentLang=="ru" and "Русский" or "English";Title.Text=t("title");VersionBadge.Text=t("version");UnloadButton.Text=t("set_unload");for _,k in ipairs(TabOrder) do if Tabs[k] and Tabs[k].Button then Tabs[k].Button.Text=t(k) end end for _,u in ipairs(UIElements) do if u.IsSlider then local cv=u.Element.Text:match(": (%d+)");u.Element.Text=t(u.Key)..": "..(cv or "0") elseif u.IsAccordion then local ie=string.sub(u.Element.Text,1,1)=="▼";u.Element.Text=(ie and "▼ " or "▶ ")..t(u.Key) else u.Element.Text=t(u.Key) end end end)
+    UnloadButton.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+    UserInputService.InputBegan:Connect(function(i) if i.KeyCode==Settings.MenuKey then Settings.MenuOpen=not Settings.MenuOpen;MainFrame.Visible=Settings.MenuOpen end end)
+    print("[REL1LSY] v3.1 loaded!")
+end
+BtnRu.MouseButton1Click:Connect(function() CurrentLang="ru";StartMainGUI() end)
+BtnEn.MouseButton1Click:Connect(function() CurrentLang="en";StartMainGUI() end)
+print("[REL1LSY] Language menu shown.")
